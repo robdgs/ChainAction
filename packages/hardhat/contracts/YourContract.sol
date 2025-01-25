@@ -1,78 +1,252 @@
-//SPDX-License-Identifier: MIT
-pragma solidity >=0.8.0 <0.9.0;
+// SPDX-License-Identifier: UNLICENSED
+pragma solidity ^0.8.20;
 
-// Useful for debugging. Remove when deploying to a live network.
-import "hardhat/console.sol";
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
-// Use openzeppelin to inherit battle-tested implementations (ERC20, ERC721, etc)
-// import "@openzeppelin/contracts/access/Ownable.sol";
+contract PetitionPlatform {
+	//EVENTS
+	//petition created
+	event PetitionCreated(uint256 indexed petitionId, address indexed creator, string title, string description, uint256 goalSignatures);
+	//petition signed
+	event PetitionSigned(uint256 indexed petitionId, address indexed signer);
+	//petition goal reached
+	event PetitionGoalReached(uint256 indexed petitionId, address indexed creator, uint256 signatures, uint256 goalSignatures);
+	//petition ended
+	event PetitionEnded(uint256 indexed petitionId, address indexed creator, uint256 signatures, uint256 goalSignatures);
+	//donation made
+	event DonationMade(uint256 indexed petitionId, address indexed donor, uint256 amount);
+	//found claimed
+	event FundsClaimed(uint256 indexed petitionId, address indexed creator, uint256 amount);
 
-/**
- * A smart contract that allows changing a state variable of the contract and tracking the changes
- * It also allows the owner to withdraw the Ether in the contract
- * @author BuidlGuidl
- */
-contract YourContract {
-    // State Variables
-    address public immutable owner;
-    string public greeting = "Building Unstoppable Apps!!!";
-    bool public premium = false;
-    uint256 public totalCounter = 0;
-    mapping(address => uint) public userGreetingCounter;
+	//ERRORS
+	//empty string
+	error EmptyStringError();
+	//petition ended
+	error PetitionEndedError();
+	//petition in progress
+	error PetitionInProgressError();
+	//petition not exists
+	error PetitionNotExistsError();
+	//petition not signed
+	error PetitionNotSignedError();
+	//petition already signed
+	error PetitionAlreadySignedError();
+	//invalid amount
+	error InvalidAmountError();
+	//not petition administrator
+	error NotPetitionAdministratorError();
+	//no funds to claim
+	error NoFundsToClaimError();
 
-    // Events: a way to emit log statements from smart contract that can be listened to by external parties
-    event GreetingChange(address indexed greetingSetter, string newGreeting, bool premium, uint256 value);
+	//STATE VARIABLES
+	//petition id counter
+	uint256 public petitionId;
 
-    // Constructor: Called once on contract deployment
-    // Check packages/hardhat/deploy/00_deploy_your_contract.ts
-    constructor(address _owner) {
-        owner = _owner;
-    }
+	//token address
+	address public tokenAddress;
 
-    // Modifier: used to define a set of rules that must be met before or after a function is executed
-    // Check the withdraw() function
-    modifier isOwner() {
-        // msg.sender: predefined variable that represents address of the account that called the current function
-        require(msg.sender == owner, "Not the Owner");
-        _;
-    }
+	//petition struct
+	struct Petition {
+		address creator;
+		string title;
+		string description;
+		uint256 signatures;
+		uint256 goalSignatures;
+		uint256 founds;
+		mapping(address => bool) signers;
+		bool ended;
+	}
 
-    /**
-     * Function that allows anyone to change the state variable "greeting" of the contract and increase the counters
-     *
-     * @param _newGreeting (string memory) - new greeting to save on the contract
-     */
-    function setGreeting(string memory _newGreeting) public payable {
-        // Print data to the hardhat chain console. Remove when deploying to a live network.
-        console.log("Setting new greeting '%s' from %s", _newGreeting, msg.sender);
+	//petition mapping
+	mapping(uint256 => Petition) public petitions;
 
-        // Change state variables
-        greeting = _newGreeting;
-        totalCounter += 1;
-        userGreetingCounter[msg.sender] += 1;
+	//users petitions created mapping
+	mapping(address => uint256[]) public usersPetitionsCreated;
 
-        // msg.value: built-in global variable that represents the amount of ether sent with the transaction
-        if (msg.value > 0) {
-            premium = true;
-        } else {
-            premium = false;
-        }
+	//user petitions signed mapping
+	mapping(address => uint256[]) public usersPetitionsSigned;
 
-        // emit: keyword used to trigger an event
-        emit GreetingChange(msg.sender, _newGreeting, msg.value > 0, msg.value);
-    }
+	//MODIFIERS
+	//only creator
+	modifier onlyCreator(uint256 _petitionId) {
+		if (msg.sender != petitions[_petitionId].creator) {
+			revert NotPetitionAdministratorError();
+		}
+		_;
+	}
 
-    /**
-     * Function that allows the owner to withdraw all the Ether in the contract
-     * The function can only be called by the owner of the contract as defined by the isOwner modifier
-     */
-    function withdraw() public isOwner {
-        (bool success, ) = owner.call{ value: address(this).balance }("");
-        require(success, "Failed to send Ether");
-    }
+	//only signed
+	modifier onlySigned(uint256 _petitionId) {
+		if (!petitions[_petitionId].signers[msg.sender]) {
+			revert PetitionNotSignedError();
+		}
+		_;
+	}
 
-    /**
-     * Function that allows the contract to receive ETH
-     */
-    receive() external payable {}
+	//only not signed	
+	modifier onlyNotSigned(uint256 _petitionId) {
+		if (petitions[_petitionId].signers[msg.sender]) {
+			revert PetitionAlreadySignedError();
+		}
+		_;
+	}
+
+	//only petition exists
+	modifier onlyPetitionExists(uint256 _petitionId) {
+		if (petitions[_petitionId].goalSignatures == 0) {
+			revert PetitionNotExistsError();
+		}
+		_;
+	}
+
+	//only petition ended
+	modifier onlyPetitionEnded(uint256 _petitionId) {
+		if (!petitions[_petitionId].ended) {
+			revert PetitionInProgressError();
+		}
+		_;
+	}
+
+	//only petition in rogress
+	modifier onlyPetitionInProgress(uint256 _petitionId) {
+		if (petitions[_petitionId].ended) {
+			revert PetitionEndedError();
+		}
+		_;
+	}
+
+	//CONSTRUCTOR
+	constructor(address _tokenAddress) {
+		tokenAddress = _tokenAddress;
+		petitionId = 0;
+	}
+
+	//FUNCTIONS
+	//create petition
+	function createPetition(string memory _title, string memory _description, uint256 _goalSignatures) public returns (uint256) {
+		if (bytes(_title).length == 0 || bytes(_description).length == 0) {
+			revert EmptyStringError();
+		}
+		if (_goalSignatures <= 0) {
+			revert InvalidAmountError();
+		}
+		petitionId++;
+		petitions[petitionId].creator = msg.sender;
+		petitions[petitionId].title = _title;
+		petitions[petitionId].description = _description;
+		petitions[petitionId].goalSignatures = _goalSignatures;
+		usersPetitionsCreated[msg.sender].push(petitionId);
+		emit PetitionCreated(petitionId, msg.sender, _title, _description, _goalSignatures);
+		return petitionId; 
+	}
+
+	//sign petition
+	function signPetition(uint256 _petitionId) public onlyPetitionExists(_petitionId) onlyPetitionInProgress(_petitionId) onlyNotSigned(_petitionId) {
+		Petition storage _petition = petitions[_petitionId];
+		_petition.signers[msg.sender] = true;
+		_petition.signatures++;
+		usersPetitionsSigned[msg.sender].push(_petitionId);
+		emit PetitionSigned(_petitionId, msg.sender);
+		if (_petition.signatures >= _petition.goalSignatures) {
+			//_petition.ended = true;
+			emit PetitionGoalReached(_petitionId, _petition.creator, _petition.signatures, _petition.goalSignatures);
+		}
+	}
+
+	//donate to petition
+	function donateToPetition(uint256 _petitionId, uint256 _amount) public onlyPetitionExists(_petitionId) onlyPetitionInProgress(_petitionId) onlySigned(_petitionId) {
+		if (_amount <= 0) {
+			revert InvalidAmountError();
+		}
+		bool success = IERC20(tokenAddress).transferFrom(msg.sender, address(this), _amount);
+		require(success, "Transfer failed");
+		Petition storage _petition = petitions[_petitionId];
+		_petition.founds += _amount;
+		emit DonationMade(_petitionId, msg.sender, _amount);
+	}
+
+	//claim petition founds
+	function claimFunds(uint256 _petitionId) public onlyPetitionExists(_petitionId) onlyPetitionEnded(_petitionId) onlyCreator(_petitionId) {
+		if (petitions[_petitionId].founds <= 0) {
+			revert NoFundsToClaimError();
+		}
+		bool success = IERC20(tokenAddress).transfer(msg.sender, petitions[_petitionId].founds);
+		require(success, "Transfer failed");
+		petitions[_petitionId].founds = 0;
+		emit FundsClaimed(_petitionId, msg.sender, petitions[_petitionId].founds);
+	}
+
+	//close petition
+	function closePetition(uint256 _petitionId) public onlyPetitionExists(_petitionId) onlyCreator(_petitionId) onlyPetitionInProgress(_petitionId) {
+		petitions[_petitionId].ended = true;
+		emit PetitionEnded(_petitionId, petitions[_petitionId].creator, petitions[_petitionId].signatures, petitions[_petitionId].goalSignatures);
+	}
+
+	//GETTERS
+	//get max petitions id
+	function getMaxPetitionsIds() public view returns (uint256) {
+		return petitionId;
+	}
+
+	//get petition creator
+	function getPetitionCreator(uint256 _petitionId) public view returns (address) {
+		return petitions[_petitionId].creator;
+	}
+
+	//get petition title
+	function getPetitionTitle(uint256 _petitionId) public view returns (string memory) {
+		return petitions[_petitionId].title;
+	}
+
+	//get petition description
+	function getPetitionDescription(uint256 _petitionId) public view returns (string memory) {
+		return petitions[_petitionId].description;
+	}
+
+	//get petition signatures
+	function getPetitionSignatures(uint256 _petitionId) public view returns (uint256) {
+		return petitions[_petitionId].signatures;
+	}
+
+	//get petition goal signatures
+	function getPetitionGoalSignatures(uint256 _petitionId) public view returns (uint256) {
+		return petitions[_petitionId].goalSignatures;
+	}
+
+	//get petition founds
+	function getPetitionFounds(uint256 _petitionId) public view returns (uint256) {
+		return petitions[_petitionId].founds;
+	}
+
+	//get petition ended
+	function getPetitionEnded(uint256 _petitionId) public view returns (bool) {
+		return petitions[_petitionId].ended;
+	}
+
+	/*//get petition signers
+	function getPetitionSigners(uint256 _petitionId) public view returns (address[] memory) {
+		
+	}*/
+
+	//get user petitions created
+	function getUserPetitionsCreated(address _user) public view returns (uint256[] memory) {
+		return usersPetitionsCreated[_user];
+	}
+
+	//get user petitions signed
+	function getUserPetitionsSigned(address _user) public view returns (uint256[] memory) {
+		return usersPetitionsSigned[_user];
+	}
+
+	//SETTERS
+	//set petition goal signatures
+	function setPetitionGoalSignatures(uint256 _petitionId, uint256 _goalSignatures) public onlyPetitionExists(_petitionId) onlyCreator(_petitionId) onlyPetitionInProgress(_petitionId) {
+		petitions[_petitionId].goalSignatures = _goalSignatures;
+	}
+
+	//set petition description
+	function setPetitionDescription(uint256 _petitionId, string memory _description) public onlyPetitionExists(_petitionId) onlyCreator(_petitionId) onlyPetitionInProgress(_petitionId) {
+		petitions[_petitionId].description = _description;
+	}
+
 }
