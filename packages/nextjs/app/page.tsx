@@ -46,8 +46,8 @@ const Home: NextPage = () => {
               <BugAntIcon className="h-8 w-8 fill-secondary" />
               <p>
                 Tinker with your smart contract using the{" "}
-                <Link href="/debug" passHref className="link">
-                  Debug Contracts
+                <Link href="/categories" passHref className="link">
+                  Find Categories
                 </Link>{" "}
                 tab.
               </p>
@@ -56,8 +56,8 @@ const Home: NextPage = () => {
               <MagnifyingGlassIcon className="h-8 w-8 fill-secondary" />
               <p>
                 Explore your local transactions with the{" "}
-                <Link href="/blockexplorer" passHref className="link">
-                  Block Explorer
+                <Link href="/create" passHref className="link">
+                  Create a Petition
                 </Link>{" "}
                 tab.
               </p>
