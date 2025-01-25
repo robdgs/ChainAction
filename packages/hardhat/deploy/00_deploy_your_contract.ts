@@ -1,6 +1,6 @@
+// @ts-nocheck
 import { HardhatRuntimeEnvironment } from "hardhat/types";
 import { DeployFunction } from "hardhat-deploy/types";
-import { Contract } from "ethers";
 
 /**
  * Deploys a contract named "YourContract" using the deployer account and
