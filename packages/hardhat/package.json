@@ -2,6 +2,8 @@
   "name": "@se-2/hardhat",
   "version": "0.0.1",
   "scripts": {
+    "build": "hardhat deploy",
+    "prebuild": "hardhat compile",
     "account": "hardhat run scripts/listAccount.ts",
     "account:generate": "hardhat run scripts/generateAccount.ts",
     "account:import": "hardhat run scripts/importAccount.ts",
