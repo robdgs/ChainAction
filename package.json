@@ -8,7 +8,7 @@
     ]
   },
   "scripts": {
-   "hardhat": "hardhat",
+    "hardhat": "hardhat",
     "account": "yarn hardhat:account",
     "account:generate": "yarn workspace @se-2/hardhat account:generate",
     "account:import": "yarn workspace @se-2/hardhat account:import",
@@ -60,6 +60,7 @@
     "@heroui/react": "^2.6.14",
     "@heroui/system": "^2.4.7",
     "@heroui/theme": "^2.4.6",
+    "@openzeppelin/contracts": "^5.2.0",
     "framer-motion": "^12.0.5",
     "tailwindcss": "^4.0.0"
   }
