@@ -30,11 +30,6 @@ jobs:
       - name: Install dependencies
         run: yarn install --immutable
       
-      
-
-      - name: Compile contracts
-        run: yarn hardhat compile
-      
       - name: Run hardhat node, deploy contracts (& generate contracts typescript output)
         run: yarn chain & yarn deploy
 
