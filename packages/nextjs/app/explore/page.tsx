@@ -6,16 +6,7 @@ import { useScaffoldReadContract } from "~~/hooks/scaffold-eth/useScaffoldReadCo
     
     
     return <div>
-         <div className="card-list">
-      {cards.map(card => (
-        <Card 
-          key={id} 
-          title={card.title} 
-          description={card.description} 
-          
-        />
-      ))}
-    </div>
+         ciao
 
 
         </div>;
