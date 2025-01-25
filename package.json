@@ -8,6 +8,7 @@
     ]
   },
   "scripts": {
+    "build": "yarn hardhat:deploy && yarn next:build",
     "hardhat": "hardhat",
     "account": "yarn hardhat:account",
     "account:generate": "yarn workspace @se-2/hardhat account:generate",
