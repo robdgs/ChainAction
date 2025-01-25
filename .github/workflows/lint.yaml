@@ -31,7 +31,7 @@ jobs:
         run: yarn install --immutable
       
       - name: Build dependencies
-        run: yarn build
+        run: yarn workspaces run build
 
       - name: Compile contracts
         run: yarn hardhat compile
