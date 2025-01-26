@@ -1,6 +1,6 @@
 import { wagmiConnectors } from "./wagmiConnectors";
 import { Chain, createClient, fallback, http } from "viem";
-import { hardhat, mainnet } from "viem/chains";
+import { arbitrumSepolia, hardhat, mainnet } from "viem/chains";
 import { createConfig } from "wagmi";
 import scaffoldConfig, { DEFAULT_ALCHEMY_API_KEY } from "~~/scaffold.config";
 import { getAlchemyHttpUrl } from "~~/utils/scaffold-eth";
@@ -13,7 +13,7 @@ export const enabledChains = targetNetworks.find((network: Chain) => network.id 
   : ([...targetNetworks, mainnet] as const);
 
 export const wagmiConfig = createConfig({
-  chains: enabledChains,
+  chains: [arbitrumSepolia, mainnet],
   connectors: wagmiConnectors,
   ssr: true,
   client({ chain }) {

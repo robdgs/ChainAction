@@ -1,19 +1,23 @@
-// @ts-nocheck
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { AbiCoder, BrowserProvider, Contract, ethers } from "ethers";
+import { createPublicClient, http } from "viem";
+import { arbitrumSepolia } from "viem/chains";
+import { useWriteContract } from "wagmi";
 import { CONTRACT_ABI } from "~~/app/lib/abi";
 
-const contractAddress = "0xe7f1725E7734CE288F8367e1Bb143E90bb3F0512";
+const contractAddress = "0xfE8fE7B3BcE21A8980C6f50F11574f6fC1172217";
 
 export default function MyModal() {
-  const [contract, setContract] = useState<Contract>(null);
+  const [contract, setContract] = useState<Contract | null>(null);
   const [title, setTitle] = useState("");
   const [author, setAuthor] = useState("");
   const [description, setDescription] = useState("");
   const [goalSignatures, setGoalSignatures] = useState("");
-  const [petitionId, setPetitionId] = useState<number>(null);
+  const [petitionId, setPetitionId] = useState<number>(0);
   const router = useRouter();
+
+  const { writeContractAsync } = useWriteContract();
 
   useEffect(() => {
     const initContract = async () => {
@@ -50,7 +54,18 @@ export default function MyModal() {
       console.log({
         contract,
       });
-      const tx = await contract.createPetition(title, description, goal);
+      // const publicClient = createPublicClient({
+      //   chain: arbitrumSepolia,
+      //   transport: http(),
+      // });
+      // const txHash = await writeContractAsync({
+      //   address: contractAddress,
+      //   abi: CONTRACT_ABI,
+      //   functionName: "createPetition",
+      //   args: [title, description, BigInt(goal)],
+      // });
+
+      const tx = await contract.createPetition(title, description, BigInt(goal));
       const receipt = await tx.wait();
       const abiCoder = new AbiCoder();
 

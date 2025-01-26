@@ -17,7 +17,7 @@ import { getBlockExplorerAddressLink } from "~~/utils/scaffold-eth";
 export const RainbowKitCustomConnectButton = () => {
   const networkColor = useNetworkColor();
   const { targetNetwork } = useTargetNetwork();
-
+  console.log("targetNetwork", targetNetwork);
   return (
     <ConnectButton.Custom>
       {({ account, chain, openConnectModal, mounted }) => {
@@ -36,7 +36,7 @@ export const RainbowKitCustomConnectButton = () => {
                   </button>
                 );
               }
-
+              console.log(chain, chain.unsupported, chain.id !== targetNetwork.id);
               if (chain.unsupported || chain.id !== targetNetwork.id) {
                 return <WrongNetworkDropdown />;
               }
