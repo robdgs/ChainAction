@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: UNLICENSED
-pragma solidity ^0.8.20;
+pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
@@ -20,7 +20,7 @@ contract PetitionPlatform {
 
 	//ERRORS
 	//empty string
-	error EmptyStringError();
+	error EmptyStringError(string);
 	//petition ended
 	error PetitionEndedError();
 	//petition in progress
@@ -32,7 +32,7 @@ contract PetitionPlatform {
 	//petition already signed
 	error PetitionAlreadySignedError();
 	//invalid amount
-	error InvalidAmountError();
+	error InvalidAmountError(string);
 	//not petition administrator
 	error NotPetitionAdministratorError();
 	//no funds to claim
@@ -125,10 +125,10 @@ contract PetitionPlatform {
 	//create petition
 	function createPetition(string memory _title, string memory _description, uint256 _goalSignatures) public returns (uint256) {
 		if (bytes(_title).length == 0 || bytes(_description).length == 0) {
-			revert EmptyStringError();
+			revert EmptyStringError("empty string error");
 		}
 		if (_goalSignatures <= 0) {
-			revert InvalidAmountError();
+			revert InvalidAmountError("invalid amount error");
 		}
 		petitionId++;
 		petitions[petitionId].creator = msg.sender;
@@ -156,7 +156,7 @@ contract PetitionPlatform {
 	//donate to petition
 	function donateToPetition(uint256 _petitionId, uint256 _amount) public onlyPetitionExists(_petitionId) onlyPetitionInProgress(_petitionId) onlySigned(_petitionId) {
 		if (_amount <= 0) {
-			revert InvalidAmountError();
+			revert InvalidAmountError("inv amount error");
 		}
 		bool success = IERC20(tokenAddress).transferFrom(msg.sender, address(this), _amount);
 		require(success, "Transfer failed");
